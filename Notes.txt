@@ -1,0 +1,300 @@
+Firstly we are gonna create a virtual environment to separate all our installs from our global machine (It is a good practice to do this) in a specifies folder.
+
+For this, firstly install the virtual environment at the preffered location using
+          pip install virtualenv
+
+Now we will run this command and name our environment whatever we want (eg, env)
+          virtualenv env
+And this will now create our virtual environment.
+
+Now we are going to activate the environment.
+          env/scripts/activate
+Or 
+          env/Scripts/activate
+As we have activated our environment, we are now in the virtual environment instead of our global machine.
+To deactivate,
+          env/scripts/deactivate
+If it is not working, try to run just 'deactivate'
+
+Whenever you log into this, you have to activate the environment.
+
+As we are in the environment, we are now installing the required packages.
+          pip install django
+
+We have installed Django now and now we have the access to all the commands.
+
+Now we are gonna start our project with whatever name we want
+         django-admin startproject myproject
+This command is start a django project named 'myproject' and gonna create boiler plate to setup our application.
+
+Now we are gonna change our directory to the project directory.
+          cd myproject
+
+Now we will start the django development server
+         python manage.py runserver
+
+Everyone likes to store their environment in a different way, so what I am gonna do is, I am gonna move my env to myproject folder.
+
+Now we are gonna open our IDE, open terminal and run our server again.
+
+Now we can take a look at the python files inside the project folder.
+         wsgi.py     -> Web Server Gateaway Interface
+         urls.py     -> It gives a list of all the configured paths like admin, home, about etc.
+         asgi.py     -> Asynchronous Server Gateway Interface
+         settings.py -> This is where we have all our core project configurations. This is like command center of our project.
+
+Now are gonna work on rendering something out and changing that default template that we saw.
+In Django, we are gonna be  working with something called as Apps here. There are apps that handle different parts of our application.
+Basically apps are little components of our website that handles different parts of a website.
+
+-----
+
+In order to create our first app here.
+We are gonna open a new tab on the terminal and our server is running sideways.
+
+Now we will hit a command
+          python manage.py startapp base
+This is now gonna create an app named base (like baseapp) and now a folder is create named base.
+
+So at this point, the django project doesn't know about the base app that we have just created, so we have to connect this.
+
+In this base folder, we have a file views.py, this is basically what happens when somenone goes to a specific url. These are gonna be functions or classes and these are gonna fire off the things like any kind of queries to the database, any template that we need to render.
+And next we have our models.py file where we have configured the database.
+And more files like admin panel and core app configurations
+
+So now we will head back to the main project (i.e, myproject) and let this project know that we have created a new app.
+So in myproject -> settings.py -> installed apps. what we could do is just add base like 'base' and it will know about this folder or we can give the direct file path to configure it to the app. (i.e, 'base.apps.BaseConfig').
+So now django knows about out app.
+
+Let's talk about url routing and our views. So typically all our views will be handled from the views.py from the base folder.
+
+urls.py is our main url file.
+We can have multiple url files but we will have only two i.e, one the root url and another one for our specific app.
+
+So for that we will create a function named home which is gonna take request obejct as an argument. Request object is gonna be the http object. This is gonna tell us what kind of data is being passed in etc.
+Now we are gonna import the http module and just return the http response.
+
+Now we will go into the urls and the specify the url path and the homepage is going to be the root domain (empty string ('') reprents the core url). and we can create other url's similarly. 
+
+# Urls trigger views and that is what users get as an http response. (home, about and room are views).
+So this is not a good practice, if we create a big project, it will be really messy because is goona be a lot of logic in the views and lot of functionality.
+and this is why django creates apps for us and they give us a structure to separate all of our code.
+
+So we are gonna copy our views from here and paste these views into the views.py of our app. 
+Now our urls.py file doesn't know how to call those views. So what we are gonna do is we will create an urls.py file into our app to handle all the routing for this app.
+
+Firstly we are gonna import a path function and then the views of that app.
+Now we need a list called 'url patterns' and specify all the url paths that a user can go to.
+Now we will call path function for all our views and we can give them names also to reference a specific view or url by it's name.
+So now we have two views and two urls for these views in our app.
+
+But till now django doesn't know about these urls and views. So we will now add the include package to the main urls file and add a path to urls of our app using the include function. 
+
+Now the urls file of our app is gonna handle all the routing.
+So now the default django template is removed.
+
+--- 
+
+We have simple http responses, these aren't dynamic, we cannot add our own html to that. There is a way but it is gonna be too messy.
+
+So now let's add templates and for that we are creating a folder for storing all our templates and there are few ways to configure these.
+
+Lets create a file named home.html in the templates folder.
+So now we can add markups instead of simple response.
+Now we need to return these inside of our views.
+
+First thing we are gonna do is let django know about this template folder.
+For that we have to go to the Templates list of our settings.py file in our main folder. In there we have a list called 'dirs' and add our templates folder using the BASE_DIR variable (This variable acutally sets our path to the base directory which here means go to the base directory and there the template folder is).
+
+In order to reference these templates, we need to go to the views. Now we can get rid of the Http response and use render() in place of that and it takes two parameters. First one is the request object and the next one is the template name
+(Remove the imported Http packge as it is not needed now.)
+
+Now, just rendering the template isn't the best thing if we are may be adding a navigation bar. Imagine coding the navigation bar in the every single template adding all the tags and the styling.
+So here we are gonna use the template inheritance and we can also include section of templates inside of other templates.
+So we are gonna create a file just to contain the navbar and create an a tag inside of that and this is gonna be a link to the homepage like a logo such that whenever we click on the logo, we will be sent to the home page.
+
+So now this code should be seen on every single page. So we have to go to the home.html file and add a template tag like ' {% include 'navbar.html' %} '. 
+
+Now what we could do is we could create a main.html file and this is gonna allow us to create a wrapper around our templates. By default our will have different styles, themes. So we want  to include one style tag into our main theme of our website and we want it to simply encapsulate all the templates in our project.
+
+Now get the html boiler plate and in the body section we have to add tempalates. So it is gonna tell our website where to add all these child templates when we wrap another template in our website.
+Create a block for content. So in our homepage we have our main page and all the homepage content will be in here.
+
+So instead of adding the navbar file in every template, we can now just add this in our main.html file. 
+Now we have our main.html file and now we are gonna extend this in our home.html file like ' {% extends 'main.html' %} '.
+Now in order to see our home content, we can now add these content tags in our home.html to let that know where our content is and now not much is gonna change we are still gonna see our navigation bar but it is no longer present in our home.html file.
+Now extend main.html to room.html also wrap it with content files as we have done in the home.html file.
+
+So that is all about including and extending the main template. Now let's pass in some data into our templates.
+
+Let's go to views.py and create a variable named rooms which is gonna be a python list and we are gonna have some rooms which are dictionaries and represented like objects. Each room will have an id and name of that room.
+Now as we have created the list, we want to render this out in our home.html template. At this point what we could do is we can pass this rooms list as a parameter in the home view as a dictionary which means it has a key value pair, like this :
+                             {'rooms': rooms}   where the key specifies how we want to address this in the template and value specifies what we are passing in, which is the rooms list here.
+Now we have the access of the rooms list in our template. So now we have to go to the home.html and render this list out.
+
+OR we can save this in a variable and pass that variable just like,
+             context = {'rooms': rooms}
+
+So in that, let's create a div for the main page and inside of that create a div again which renders out all the items here. In there create a for loop using the template just like,
+                      {% for room in rooms %}
+
+                      {% endfor %}
+So the difference between regular python and this templating engine is that, we have to close our room insted of just writing the syntax. So we have to close our for loop and if statements.
+In each iteration we have to pass an h5 tag so we have to create a div for that.
+We want to print like,  1 -- Let's learn python, for all the id's.
+
+We know that variables can be passed in with two curly braces. So we will do like, 
+                      {{room.id}} -- {{room.name}} 
+So we are accessing the key value pairs from the dictionary using the object of that list.
+
+In the views.py, we can also use the if else statements. For eg, the age, If the age is less than this, render this, otherwise render this.
+
+-----
+
+So we created templates folder to store all the templates we are gonna be using in our app. In the future, we will have different apps which handles different parts of our website. So we can create a templates folder which will be specific to our app.
+So create a templates folder inside our base app and the weird thing about this is that django requires us to create another folder inside our templates folder which have to be named whatever your app's name is ( in our case base).
+Now we have to shift our home and room files here because these are specific to our app.
+So in order to actually work with this new template, we just have to specify our app now in the views.py just like,
+                                 'base/home.html'           which was previously like      'home.html'
+Do the same for room also.
+So now all our apps templates are in the apps directory and our main templates are in the root folder.
+
+Dynamic URL routing
+So how do we get a specific object of a single room here. (eg, Click on a room and see the info about that)
+So room does not have any way of that.
+So the way we are gonna do this is by changing the urls.py.
+We can pass a dynamic value for that (use angluar brackets <>). In that we are goona pass a string str and any value name pk for primary key.
+                                    'room/<str:pk>/'
+This str could be an int or slug etc based on what you are passing.
+
+So we have to pass this pk as a parameter in the room method of the views.py.
+So now we have access to whatever is inside of that parameter.
+
+Now we are gonna wrap the room.name in the home.html file with the a tags to make them clickable and the href will be "/room/{{room.id}}" to show the details of room name as per the room id.
+To actually get the value of the id, later on we are gonna use the pk to create the database but now we are using the list 
+Now write the logic in the room method,
+  Firstly we are gonna set the room to none and we are gonna loop through the rooms value. So whatever id matched to the pk, set that to room then we can set a context dictionary and set that context as the third parameter.
+               room = none
+               for i in rooms:
+                   if i['id'] == int(pk):
+                       room = i
+               context = {'room': room}
+
+So now in the room template we can just pass in the value. We can change that to
+                 {{ room.name}}
+
+So now whenever we click on the a tag that we have created, it will redirect it according to the id and show the name of the room there.
+
+Now let's see how to get dynamic values from our templates
+So in the url's there is a reason why we have given names to that, let's say at some point we want to change the url path, So we have to do is we have to go to every single tempate or wherever we are using it and then update all these values. It can be very annoying. So what we can do is we can change the value to whatever we want, but we can still access this url by its name
+Let's go into home.html and instead to writing the path in the href we can change it with the url tag which is the built in tag inside the django templating engine just like
+                 " {% url 'room' room.id %} "       inside the quotes there is the url name and the room.id is the dynamic value 
+It will create the url like /room/2/,  where 2 is the room id.
+
+So now if we want to change the url path, we do not want to change it everywhere. So it is much faster than that.
+
+----------------
+
+Now we are gonna set up the real database which is gonna be in our sqlite database and we want to actually query data from the database. So there will not be any need of using the rooms list anymore.
+
+In the terminal we can see 18 unapplied migrations. Inside our settings.py, we have different apps and a lot of these apps have database sections. So basically we have a database prepped so we have a couple of tables which are ready to be migrated like django builds out a user table for us, for authentication they have built a table to store session ids. So django creates these migrations and these are basically sql commands and are ready to be executed. So they are ready to be activated but are not triggered yet. Once I run these migrations, these commands are gonna be activated and these are gonna build out all these tables which are inside the apps list (i.e, sessions, admin etc.) So we do not even have to configure the tables, django is really good at setting these up for us and making this easy. Now we are still gonna create our tables but these are the default ones that django gives us.
+
+So stop the server and run 'python manage.py migrate'. Now these migrations are applied and basically that built out the database for us.
+Now if we run our server again we are not gonna see the unapplied migations.
+
+Now go to our app that is base and open the models.py file. This is the file where we are gonna create our database tables. 
+So what we are gonna do in here is, we are gonna create python classes. The class that we are gonna create is gonna represent the database tables. The name of the table is represented by the name of the class and every single attribute in the class is gonna represent the column. So every single time we create a new row in the table, that is going to be the instance of the class.
+              Class Name -> Table Name
+              Attributes -> Column Name
+This is called a model of a table that is why they are called models.
+
+So the first table that we are gonna create is the table for the room which is like,
+             class Room(models.Model):
+                 name = models.CharField(max_length = 200)
+                 description = models.TextField(null = True, blank = True)
+                 updated = models.DateTimeField(auto_now = True)
+                 created = models.DateTimeField(auto_now_add = True)
+
+Models by default have an id generated which starts with 1. We can also specify the id if we want.
+
+CharField has max_length of 255 characters while TextField can hold more than 255 characters. Use TextField when you have a large string as input.
+By default, the null is set to false but here we set it to true because if it is false this means that the database cannot have an instance of this model here without having something in it. So it can be blank. So we set null to true which means that it can be blank and the next parameter is the blank which means that whenever we run the save method like we submit a forum that form can be empty.
+                 blank -> For the save in the forms.
+                 null -> For database.
+This means that description can be left empty but name cannot because null is false by default.
+Updated is gonna take a snapshot anytime this instance was updated. auto_now is set to true which means that every time the save method is called go ahead and save the timestamp automatically.
+
+auto_now saves the timestamp everytime we save and auto_now_add only saves once when when that is first created.
+
+We have also created a self representation of this
+
+So the first thing after creating a model to the database is the migration. So what it is gonna do essentially is it is gonna craete a file which have a list of sql commands and how to execute this and add it to the database.
+
+We have already executed the built-in migrations, now we are gonna execute this new migration like
+             python manage.py makemigrations
+So now we can see a new file in the migrations folder of the base app.
+So once we make a migration and we can make a new miigration using the migrate command and this will go into the latest migration and it will execute those and we can see these migrations being applied.
+Now this table is included to the database.
+
+Let's say we want to view this, because we are not adding any third party packages to work with our sqlite database, we are gonna use the built in django admin panel with the /admin url.
+In the admin panel, django already has a built-in authentication for us and in order to log in, we need a user and this user need to have admin level permission.
+
+So we can generate the user from the command panel. For this, run
+             python manage.py createsuperuser
+and it will ask for the username, email and passwork for the superuser that we are creating.
+
+
+So now this user is added to the database
+Now if I log in to the panel, I can actually work with the database
+
+We added in the room table here but we cannot see it in the panel. To actually see this, we need to go to the admin.py in our base app first import the room model like
+         from .models import Room
+Now we have to register this model with the admin panel. By this we are actually saying to the admin panel that we want to view and work with item into the built-in admin panel. For this, we have to do,
+        admin.site.register(Room)
+
+Now we can see the Room into the admin panel.
+We can add rooms from there also. Now I have added two items inside of that room table. Now as we have added these we can work with the CRUD operations, render this out inside out list and view the  details.
+We have added the rooms to the database but now we want to see this on the page.
+In the views.py file  firstly we will import the model that we want to query (i.e, Room here)
+
+There is something called as MODEL MANAGER.
+This is how we can make queries to the database. 
+            
+             queryset = ModelName.objects.all()                    where, queryset = Variable that holds response
+                                                                          objects  = Model objects attribute
+                                                                          all      = method  ( some other methods are .get(), .filter(), .exclude() ) 
+                                                                          ModelName is the name of the model which is in our case Room
+
+So in the home method write, 
+      rooms = Room.objects.all()
+This is gonna give us all the rooms in the database. This rooms will now override the rooms list that we had created.
+Now this room will be passed to the database.
+
+Now if I refresh in the browser I can see the items from the database not from the rooms list that we had created before because the list is now overridden.
+NOw if I click on these, it is still gonna work because our id is same as the default model ids.
+
+We can comment out the rooms list because it is now not needed.
+
+Now in the room method, we can now get rid of all the loops and get the room from the room model. So we are doing
+           room = Room.objects.get()
+
+get() is gonna return one single item. We need to get this by one unique value because lets say we have two items with the same names, it is gonna throw an error because it needs to get a single objects. So we have entered by the id because id should be unique in the database.
+
+So now whenever we click on the links on the page, it goes to the view , queries the database and gets back that single item and then it renders that.
+
+At this point we want to add a few more models to the database. We have rooms here but each room should have a category. So we want to bring that in.
+
+Each Room is gonna have a message so we are creating a message model and for the values for an actual message, First we want to specify a user (user that is sending the message) then we are gonna specify a room which is going to be a one to many relationship because one user can have many rooms.
+
+In there we will do models.ForeignKey() and as an argument we are gonna give the parent which is Room and the second argument is gonna be the on_delete.
+If on_delete is set to models.SET_NULL it means that, whenever the parent is deleted all the instance will be set to null but the msg will still stay in the database or if we set it to models.CASCADE it means that we are simply gonna delete all the msg in that room whenever the parent is deleted.
+           room = models.ForeignKey(Room, on_delete= models.SET_NULL)
+
+For the actual msg we are gonna set a variable named 'body' and just copy and paste updated and deleted from the Room
+           body = models.TextField()                 we kept it empty because we want user to write a msg.
+
+For the user variable django already builds in  a user model for us. So for now we are gonna start with the default user model. 
+For this we are gonna import the User model and now let's set the relationship and in this case this is gonna be a one to many relationship and for that we will do
+         user = models.ForeignKey(User, on_delete = models.CASCADE)
+
+Now we have to go to up of the Room and in this case the Room is gonna be a child of the Topic, we have to specify a class above it.
