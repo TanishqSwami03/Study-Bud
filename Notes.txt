@@ -294,7 +294,257 @@ For the actual msg we are gonna set a variable named 'body' and just copy and pa
            body = models.TextField()                 we kept it empty because we want user to write a msg.
 
 For the user variable django already builds in  a user model for us. So for now we are gonna start with the default user model. 
-For this we are gonna import the User model and now let's set the relationship and in this case this is gonna be a one to many relationship and for that we will do
+For this we are gonna import the User model and now let's set the relationship and in this case this is gonna be a one to many relationship (user can have many message but a message will only have one user) and for that we will do
          user = models.ForeignKey(User, on_delete = models.CASCADE)
 
-Now we have to go to up of the Room and in this case the Room is gonna be a child of the Topic, we have to specify a class above it.
+Now we have to go to up of the Room and in this case the Room is gonna be a child of the Topic, we have to specify a class above it. And in that we are gonna add one attribute only which is name attribute which is going to be a character field and we are gonna specify the max_length for it and a self function returning the name.
+Now we wanna specify the relationship with the room. A topic can have multiple rooms but a room will only have one topic.
+So in the Room attribute, we are gonna specify a topic attribute and we are gonna connect it using to the Topic using the models.ForeignKey() like,
+        Topic = models.ForeignKey(Topic, on_delete = models.SET_NULL)
+Because the Topic model is placed above the Room in the code, if I shift it below, I can still access this value but now I have to wrap the Topic in a string like 
+        Topic = models.ForeignKey('Topic', on_delete = models.SET_NULL)
+
+After setting it null, it will give an issue, which says that we have to allow it to be null because when it gets removed and set to null, we need to make sure that the database will allow it.
+        Topic = models.ForeignKey(Topic, on_delete = models.SET_NULL, null=True)
+
+Now we have to create a host attribute in the Room model and set USER as the host like
+        Topic = models.ForeignKey(User, on_delete = models.SET_NULL, null=True)
+
+Now we have a relationship to our Host and the User
+
+Now again we have to prep the migrations using 'makemigrations' command in a new terminal and a second migrations file will be created into the migrations folder and then we have to execute them using the 'migrate' command and now that is gonna add it to the database.
+
+Now in the admin.py file, we have to register these models just like we did earlier.
+
+[ 
+  NOTE : I got an error for column not found but no error in the tutorial, tried to google it and found the solution which is
+                 python manage.py migrate --run-syncdb
+       This command is gonna sync the db without the migrations and now the error is gone. 
+]
+
+Now we can see the topics and rooms in the admin panel.
+Let's add some topics.
+Now as we have created the topics, we can now set these topics in our rooms and the host also.
+Add one more user and write some messages.
+
+As per the design, we want to render out the username and the topic, so we have to update the templates.
+
+So in the home.html, in the div, add a span tag and to render the username, we can query the host object and render the username from that.
+       <span>@{{room.host.username}}</span>
+This will render out the username of the host from the database.
+Later on, we will make this username clickable.
+
+And we can also render the topic name and for that we are using the small tag.
+       <small>{{room.topic.name}}</small>
+
+Now we are done with rendering out the items.
+
+---------------------------
+
+Now we will take a look at the CRUD operations.
+
+So we wanna learn how to work with a database outside of django admin panel. So in order to do this, the first thing I am gonna do is, in the app's template folder I am gonna add a form template for the room and this is gonna update and create a room. So one template for two different views.
+
+So the first thing we are gonna do is extend the main template.
+           {% extends 'main.html' %}
+and we are gonna wrap all the content
+
+In the block, create a div and in that create a form which has a method POST for creating and updating and there will be an action but if there is no action it is gonna send it to the current URL that we are at. So I can send it to a specific URL.
+Inside of every form in the django, for using this template engine we need to add a csrf_token (CSRF = Cross site request forgery). This token will be sent on every form submission. So when we are sending POST request in django, we need to pass in this token with every request just to make sure that there is no malicious attempts. This will help us from cross site forgery attacks.
+
+We want a submit button also, so we are gonna specify that.
+         <div>
+            <form method = "POST" action="">
+        	    {% csrf_token %}
+
+                <input type="submit" value="Submit" />
+ 
+            </form>
+          </div>
+Now we have our form, we can go to views file and create a view for this.
+
+Creating a view for creting room and adding a URL for the same.
+        def createRoom(request):
+    		context = {}
+    		return render(request, 'base/room_form.html', context)
+
+OK so now we have out URl, a view which renders out a template and now let's just go and link this up.
+
+So we want that user can create a room from the homepage so let's go ahead to that.
+Before all the room let's create a link to create the room
+
+We can create this form manually but we are using something called as model form for that (There is definitely a level of abstraction to this).
+
+So let's go ahead and build out a model form. So a model form is a class based representation of a form.
+So we are gonna create a new file inside of our base app called as forms.py and inside of this import the ModelForm
+
+So all we do to create a modelform is we create a class. So there are two minimum values that we need here, so when we specify the metadata, we specify the model for which we want to create a form for, which is gonna be room model and we have to specify the field (this is gonna create the form based on the data/ metadata of the room model. we specified all here which means that it is gonna give us all the fields but later on we will specify the specific values that we want in a list)
+
+		class RoomForm(ModelForm):
+    			class Meta:
+        			model = Room
+        			fields = '__all__'
+
+
+Now inside of the view, import that form and inside of CreateRoom, we are just gonna do
+             form = RoomForm()
+and now we can pass this in the context
+             context = {'form':form}
+
+And now we can pass this in room_form.html like
+            {{form}}
+
+Now if we refresh in the browser, we got the form.
+Now we are gonna work on this and make it look a little bit better.
+But for now we are using a quick shortcut which is {{form.as_p}}. It will wrap a paragraph tag around every input field that the form has.
+
+Now we need to process this data.
+To print the submitted data on the console, go to views.py file and below form just write, 
+         if request.method == POST:
+             print(request.POST)
+It will print the data as a dictionary on the console.
+
+We can also process this data manually like
+            request.POST.get('name')        --> It will print the name.
+But in our case we have the modelform which takes care of all this logic for us.
+So we can do it like, 
+           form = RoomForm(request.POST)            which means passing all the POST data into the form.
+Then to save the form firstly we have to check if all the entries are valid or not. 
+          if form.is_valid():
+              form.save()
+This is gonna save that model in the database.
+Once this is save, we want user to be redirected to the homepage again.
+So we will import a value called redirect and then below the save, we will return to home.
+Now if I click on create room and submit that, we will be redirected to homepage and it will be shown as a new room on the homepage.
+
+The next thing I wanna do is I want newer items to be rendered first.
+
+So for this, we will go to models first and we will directly add this to the room method here. We will create a meta class and specify the ordering there and this is gonna be a list. So we will order this by created and then by updated.
+              class Meta:
+                   ordering = ['-updated', '-created']
+If we don't write - with these, it will order it in the ascending order which means newest one will be last but writing - will invert it and now the newest one will be written last.
+
+now let's go into updating a room. 
+To update we already have a template that submits that POST form or the POST request ( in the room_form.html)
+
+Now we need to create a new view and we are gonna call this updateRoom(). It is gonna look a lot like the createRoom() but there are a few changes. As an argument, we are passing the request but this time we are passing the primary key (pk) also with it because we want to know which item to be updated.
+
+Firstly we are gonna get the item which is to be updated (in this case room).
+              room = Room.objects.get(id=pk)
+So we got the room, now we want the form same as the createRoom() but the difference is when we click to edit a room we want to actually know what room we are gonna edit.
+So form = RoomForm() will give us an empty form that we can render in the context dictionary. So how do we get that data prefilled, so we can use the instance and pass in the room.
+So now this form will be prefilled with this room value.
+
+So for this we are gonna add an edit buttton on the homepage.
+
+For this, we need a URL and we want id also, so we are adding the primary key also.
+         path('update-room/<str:pk>/', views.updateRoom, name = "update-room"),
+
+Now go the home.html page and add in an edit button in the top of the div. 
+         <a href="{% url 'update-room' room.id %}">Edit</a>
+
+Now we can see the edit button and when we click on the button, we can see the info. prefilled and we can now edit that from there but if we try to save that we can't because we need to process that info.
+
+We can see that info. but now we need to process this. So we will now specify the method as we have specified before.
+         if request.method == 'POST':
+              form =  RoomForm(request.POST, instance=room)
+              if form.is_valid():
+                  form.save()
+                  return redirect('home')
+
+this instance parameter is used to tell it which room to edit. If we don't specify this, it is just gonna add a new room instead of updating.
+
+We are done with this, now we gonna add delete method.
+We are creating a new method inside of our tempates/base folder just to handle deleting (delete.html). This is gonna be a dynamic template meaning that it will be used for every deleting process when we add more functionalities later.
+We are gonna make it pretty generic. 
+In this, we will also give a confirmation msg to the user to confirm the deleting process and we are gonna add an obj template which changes which means that object can be msg, comment etc. Then we will add an input button to submit and the value will be confirm and we can also add a button for going back and in this case we want to send user back to the previour page not any specific page and for this href will be.
+           href = "{{request.META.HTTP_REFERER}}"            --> This is gonna send the user to where they came from.
+
+Now we have created the tempalate, we can now add the view.
+and as a context we will pass the obj which means that room will be called as the obj in the template. In this, we will obviously not save as we were doing previously, we will simply use delete() to delete the room from the database.
+
+Now we have defined the delete functionality also.
+
+We are done with CRUD.
+
+We we want to build some search functionality and add a side bar for quick search also.
+
+Now firstly we are gonna add some styling here and it is gonna be very serious.
+Now we will go the home.html and firstly we will make sure that the entire page is wrapped in a div and we are give this div a class called home-container. Inside of this div we will create another div for the side bar which says browse topics (h3 tag).
+Now we will create another div and wrap all the rooms in that.
+
+Now we have one container around everything, one for the topics and another one for the list of rooms.
+
+If we refresh it now, we can see that they all are in line, so now we have to create a layout for them.
+
+Now we will go ahead and add some styling right here.
+          <style>
+              .home-container{
+        		display: grid;
+        		grid-template-columns: 1fr 3fr;                   This means that there will be two columns as we have 2 col and right one will be wider.
+    		  }
+	    </style>
+
+After refreshing, we can see two columns now.
+Now we want to list out all the topics in the browse topics column.
+
+For this, we will go to the views and make a quick query about the topics and for that we have to import the topics first.
+For now, we are gonna list out everything but if we add thousands of topics into our website, we have to filter them out may be. 
+           topics = Topic.objects.all()
+We will now throw this into the context dictionary.
+           'topics':topics
+Now we have all out topics and we want to render them out into the home page.
+For this, we have to loop through all the topics. In the href, we will send the user back to the homepage and then we will pass in the query.
+So what's gonna happen here is we are going the home page when we click in the side bar. So when we click it, it is gonna send the user to the home page and then we will thorow in the topic name.
+           {% for topic in topics %}
+              <div>
+                  <a href="{% url 'home'%}?q={{topic.name}}">{{topic.name}}</a>
+              </div>
+	      {% endfor %}
+
+Now if we click on that, it is gonna added to the parameter and we can now get this value inside of the view and filter down some data using that.
+Now as we have that, we wanna make sure that we can also go to all the topics. For this we are creating another div.
+		<div>
+               <a href="{% url 'home' %}">All Topics</a>
+            </div>
+
+Now in the view for the actual functionality, we can use the filter() method instead of all() but if we do not pass any parameter in the filter(), it is gonna work same as the all().
+Now we will create a variable to get the q (q is query which we have just done in the for loop), q is gonna be whatever we pass in the URL. 
+So as a parameter, what we can do is, we can go to topics ( models -> topic)  and then I can query upwards to the parent using the __. 
+        q = request.GET.get('q')
+        rooms = Room.objects.filter(topic__name = q)
+
+Now on the first search, we will have an issue, which is because we do not have any parameters in the URL on the first search. But if we click on the topics, it will do the work.
+
+To solve this, we need to create some kind of condition here. So the first thing is, we are gonna use an inline if statement and we will check if the request method has something and instead of setting the value directly in the parameter, we are gonna use the 'icontains', which means that, our parameter is gonna work only if we have something in the q, otherwise it will work as all().
+So this means that, if we do not have anything in the URL, filter() will not work and it will now act as all().
+
+Now if I want to query for the javascript topic but in the query, i only write the jav not the full javascript, it will still work.
+
+Now we do not want user to search from the query in the URL that's why we will add the search bar.
+We want the search bar to be dynamic because we are giving the functionality that user can search for the topic, writer etc.
+
+So in the navbar, we can create a form for the GET method
+         <form method = "GET" action="{% url 'home' %}">
+             <input type="text" name="q" placeholder="Search Rooms">
+         </form>
+
+We are specifying the name as q because we want it to take the room and push it into the URL.
+
+Let's see how we can make this dynamic. By now, we are searching by the room name only
+For this, in the filter method,  we need to add the parameters but for that we need AND or OR operations to be applied. For that django gives us the qlookup method which gives us the functionaloty to use all these AND or OR operations
+               rooms = Room.objects.filter(
+        		Q(topic__name__icontains = q) |
+        		Q(name__icontains = q) |
+        		Q(description__icontains = q)
+    		   )
+Now we can search using three parameters but firstly we have to import qlookup which can be imported by the name Q
+       from django.db.models import Q
+
+Now we want to show the total no. of rooms found. So in the home.html we will just add
+          <h5>{{room_count}} rooms available</h5>
+Now we have to add this in the view
+         room_count = room.count()
+
+
+Now we want to talk about the authentication.
