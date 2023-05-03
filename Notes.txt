@@ -548,3 +548,616 @@ Now we have to add this in the view
 
 
 Now we want to talk about the authentication.
+At this point, we are gonna build a user login form, user registration and user logout functionality.
+
+So by default, django has session based authentication and how this works is the same as we have in this django admin panel. So when we go to this django admin panel and provide our credentials, this gets sent to the backend and in the backend there is a database table called sessions here. So in the settings.py -> installed apps, we can see sessions here and I you go and use something like pgadmin and postgres, you will be able to see this table.
+So when we log in, this is sent to backend and a token is created and this stores information about the user. So once that user is authenticated, we now know when this user logged in, who this user is and all this info. about them.
+When we request for a particular page, we check using the session id that if this user is allowed to enter this page or not ? 
+So django has its own authentication panel, but we do not want users to use that, so we are gonna built our own authentication.
+
+So let's go ahead and start this out by building out a template called as login_register.html. So we are gonna have one single form for registration, login and that page will also change according to what page the user is on whether it is login or user registration.
+
+In there, create a template for the block and then create a div inside of that to wrap the entire website and then create a form for the login. Now django does have a built in login form, there are different ways of doing it and they also have a built in registration form. But we are gonna use our own login form. It is gonna have two fields, a username and a password. Later on, we will talk about doing this with an email instead of a username and then just we are gonna submit it.
+In the form, we will add a csrf_token. For the input value, we will tell the user to log in. There are two more input fields, one for the login and other one for the password.
+
+           <div>
+               <form method = "POST" action="">
+                   {% csrf_token %}
+        
+                   <label>Username :</label>
+                   <input type="text" name="username" placeholder="Enter your username">
+
+                   <label>Password :</label>
+                   <input type="password" name="password" placeholder="Enter password">
+
+                   <input type="submit" value= "Login">
+               </form>
+            </div>
+
+Now we have our simple form.
+Now we are creating a view for this login page.
+          def loginPage(request):
+              context = {}
+              return render(request, 'base/login_register.html', context)        
+ We will fill the context dictionary later.
+Now we need a URL.
+            path('login/', views.loginPage, name = "login"),
+
+At this point we are gonna render this link into the navbar.
+
+So we have the form, now we want to be able to login a user. At this point when we send this information, we need to extract these values. Earlier on, we used a modelForm() for this and that kinda took care of everything here. So instead of  having that done manually and having that user login form that is already built in, we are gonna do all of this by hand.
+
+So firstly in the loginPage method, we are gonna check the method and then we are gonna get the username and the password from the frontend. Once we get those, we wanna make sure that this user exist. So we are gonna use a try catch block for that.
+
+For the user, we have to import the User first and then check like
+             user = User.objects.get(username = username)
+In this it will check the users in the database that this username enteres matches with the one in the database.
+
+and now we will add the except and we will use something like flash messages.
+For this, as always we have to import this
+         from django.contrib import messages
+and then throw an error message that the user is not found.
+
+          if request.method == 'POST':
+              username = request.POST.get('username')
+              password = request.POST.get('password')
+
+              try:
+                user = User.objects.get(username = username)
+              except:
+                messages.error(request, 'User does not exist.')
+
+
+And to show that message in the browser, we have to output this flash message. For this, we have to paste this into the main template underneath the navbar which means that if we have flash messages anywhere, it will appear.
+
+         {% if messages %}
+           <ul class="messages">
+      
+              {% for message in messages %}
+              <li>{{ message }}</li>
+              {% endfor %}
+    
+           </ul>
+          {% endif %}
+
+So now if we enter a wrong username, it will show up a flash message and if I refresh it will be gone.
+
+Now we have handled what happens if a user enters a wrong user is not found. Now if user is there in the database, we have to write what will happen then.
+For this, we will use the authenticate method and we have to import this.
+
+         from django.contrib.auth import authenticate, login, logout
+
+We have also imported the login and logout method as we will need that later.
+
+So once we make sure that we have a user, we want to authenticate this user. We wanna make sure that the credentials which are for this user are correct.
+So what authenticate deos is, either it is gonna give us an object or it is gonna return back a user object that matches these credentials.
+Now we will get the user if that authenticate succeeds
+
+Now we have to check if the user is not None (which means that we got the user) and if it is not None, we have to login the user using the login() method, and what login is gonna do is it is gonna add in that session in that database and the user will be officially logged in. Once logged in, redirect the user back to the homepage. Else we will flash an error.
+
+          if user is not None:
+             login(request, user)
+             return redirect('home')
+          else:
+             messages.error(request, 'Username or Password incorrect !! ')
+
+Now we want to log out the user.
+
+We can actually access the request object inside of a template. So in the navbar.html, we are gonna write a condition to chech if the user is authenticated. If it is authenticated, logout button will show up else login button will. 
+
+           {% if request.user.is_authenticated %}
+	     <a href="{% url 'logout' %}">Logout</a>
+           {% else %}
+           <a href="{% url 'login' %}">Login</a>
+           {% endif %}
+
+Now let's create a log out view
+
+         def logoutUser(request):
+              logout(request)
+              return redirect('home')
+
+Then we can create a URL 
+
+         path('logout/', views.logoutUser, name = "logout"),
+
+and add this into the navbar template.
+
+Now at this stage, we are gonna restrict some pages based on the user or whether they are logged in or just a user browsing the website.
+
+So firstly we will make a quick import here, we will actually add in a decorator above the view that I want to restrict. Now with class based views, we make use of mixins for this, we can also use middleware. There are several ways to restrict a user but we are gonna use simple decorators for this functionality
+
+          from django.contrib.auth.decorators import login_required
+
+The page that we are gonna restrict here is 'create room'
+So before the createRoom view, all we have to write is
+
+        @login_required()
+
+At this point, once we add this decorator, if a user is not authenticated or if their session id is not in the browser , they will be simply redirected. So inside of this we have to write, where to redirect.
+     
+       @login_required(login_url = '/login')
+
+And we have also added this to the updateRoom and deleteRoom.
+
+Now if I know somebody's user credentials, I can just login and I will be allowed to go ahead and update the room, so we want to restrict the user.
+For this, we are gonna write a condition in the updateRoom and in that we want to return some kind of Httpresponse and for that we have to import that obivoulsy.
+ 
+      if request.user != room.host:
+          return Httpresponse('You are not authenticated for this')
+
+Now if someone tries to update some other user's room, he/she will not be allowed.
+We will add this check for delete also.
+
+Now at this point, we want to hide the button for any user who is not the owner.
+So in the home.html, we will wrap the update-room and delete-room button in an if condition so that only the real owner can see those.
+
+     {% if request.user == room.host %}
+ 
+     {% endif %}
+
+Now If I go to the login url ( I am still logged in ), I can access that but we do not want an already logged in user to login again. So we will do
+
+          if request.user.is_authenticated:
+              return redirect('home')
+
+
+Now let's go ahead and move to registration.
+When we are logged out and in the login page, there we want the register button.
+
+In the login_register.html, we will create another div for the registration
+
+    <div>
+      <form method = "POST" action="">
+         {% csrf_token %}
+        
+        
+         <input type="submit" value= "Register">
+       </form>
+     </div>
+
+Now after this, we can see both the buttons on the page. We will also solve that.
+
+So what we can do is, in the loginPage view, we are just gonna pass the page name
+
+   page = 'login'
+
+and we will also throw this into the login dictionary.
+
+Then under the logout page, we are gonna create a register page.
+
+     def registerPage(request):
+    	  page = 'register'
+        return render(request, 'base/login_register.html')
+
+Now make sure to create a URL for this.
+
+In the template, we are gonna point to the register here, if the user is not already registered.
+So in the login div, we will ask a question and then add a link to point to the register and then do the same thing for the login the register div.
+This is the reason why we have added the page name.
+
+In this case, if the page is 'login' then we will render out the login page and if it is not , we will login the register page.
+So we will add the if else conditions.
+
+Now django has a user creation form which already make it a lot easy for us
+
+So we will make an import and add this in.
+      
+       from django.contrib.auth.forms import UserCreationForm
+
+We are gonna customize this form but now we are gonna work with the default.
+In the register view, we will pass this and save it in a variable and then pass this in as the context dictionary.
+
+I think we don't need the page name for the register because we have given the register template in the else condition.
+
+Now we have to render this form in the register template.
+
+    {{ form.as_p }}
+
+Now if I click on the register button, I will get an entire register page.
+
+Now we need to process this form.
+In the register view, 
+
+In the is_valid statement, we are commiting it to false because we want to access the user that was created, meaning if the form is valid, the user is gonna created but we want to access the user right away and for this we have to commit it to false, So we can actually get that user object.
+
+So the reason why we are doing this is , if for some reason the user has added in uppercase or capitalize their name or may be their email depending on how they are registering, we want to make sure that it will be converted to lower case permanently.
+So we actually wanna be able to clean this data.
+Once we have to done this, we can actually save this user.
+
+NOTE :- We also have to add this lower method into the login method because what if the username is one way and when the user logges in, he accidently capitalizes the username
+
+So once the user is registered, we want the user to log in and then we can now redirect the user to the home page.
+
+Now in a case where something does not go correct, for that we have create an else condition also.
+And in that condition, we are just gonna flash an error message.
+
+     if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit = False)
+            user.username = user.username.lower()
+            user.save()
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, "An error occurred !!")
+
+Now we want to output this error, you can add different types of error handling eg. username already exists. But for now we are gonna look for any kind of error in the registration
+
+Now as the user logges in, we can give a message on the home page which says, hello user and for this we will go to the navbar and in the if statement just write hello and then the user name.
+
+Now we will focus on the user comment creation.
+
+After logging in as a user, I want to now make comments and involve in the conversation.
+So let's go ahead and work on the room page first (room.html)
+
+In the box, firstly we will throw in the description.
+Now we want to output the comment that are in this room.
+We will create a div for the actual conversation.
+
+Inside of the room view let's just get all the comments (i.e, get the children of this room here.)
+
+  room_messages = room.message_set.all().order_by('-created')
+
+
+order_by('-created') means it is gonna order it by descending order.
+
+NOTE FOR THIS :- This can be tricky for the first time if you see this. We can query child object of a specific room here. If we take the parent model, in this case Room to get all the children, all we have to do is specify the model name (in this case, Message) (write in lower case). So this complete basically means, give us the set of messages that are related to this specific room. ( _set.all() is for many to one relationship )
+
+So we have got our messages now, so we can now output those using a for loop in the room.html. 
+We wanna print the username, message and the time since it was posted. 
+
+
+   <div class="comment-wrapper">
+   	<h3>Conversation</h3>
+   	<hr>
+
+    	{% for message in room_messages %}
+    	<div>
+          <small>@{{message.user}}  {{message.created|timesince}} ago</small>
+          <p>{{message.body}}</p>
+          <hr>
+      </div>
+    	{% endfor %}
+
+    </div>
+
+Once we have that I want to be actually create the user comment section.
+For this, we will create another div and create a form inside of that.
+Add a csrf token and then add an input text field to write the comment.
+We will wrap this div inside of an if condition because we want only the authenticated users to comment.
+
+	{% if request.user.is_authenticated %}
+	<div class="comment-form">
+    		<form method = "POST" action="">
+        		{% csrf_token %}
+        		<input type="text" name="body" placeholder="Write your message here ...">
+
+    		</form>
+	</div>
+	{% endif %}
+
+Now this form will send a POST request to the room view, so we will go to the room view and we have to process this here.
+
+Here we will use the create method, previously we were using the model form which kinda auto-generates it for us. But now we have a create method (we can use save method to update something) and this mehtod does what it sounds like. It is just gonna go and create the actual message.
+
+As we have discussed earlier, we have to set the user, room and the body. The user will be the logged in user, room is gonna be the room obviously and the body is just gonna be what we just passed in the form 
+And after that we are just gonna redirect the user to the room and at this point we do have to paas in a dynamic value which is the primary key. The reason why we are using the redirect, technically I could not do this and it is still gonna be on that page, the form will be there and the page will refresh but the issue is, now this is technically a POST request and this is gonna mess up some functionality here. So we want that page to fully reload and make sure that get back on that page with a GET request.
+
+	if request.method == 'POST':
+        	message = Message.objects.create(
+            	user = request.user,
+            	room = room,
+            	body = request.POST.get('body')
+        	)
+		return redirect('room', pk=room.id)
+
+Now I also want to add in the delete functionality and the participants also (which we will show on the right side.)
+
+So firstly we have to change the layout to actually add in some columns.
+So we will go to room.html and wrap the entire room into a div to actually create a grid with the class name room-container.
+At this point, we are gonna create two columns. First column will be a wrapper around all the messages and the forms (i.e, all we have written till now). Next column is gonna be for the participants, so we will create another div for that after that first div.
+
+Now as we have created two divs for the columns and now we want the actual layout for that.
+So we will create some style tags above the main div for the styling. The theme we will install will fix this.
+We will now grid the display using the class of the main div. 
+
+	<style>
+    		.room-container{
+        		display: grid;
+        		grid-template-columns: 3fr 1fr;
+    		}
+	</style>
+
+Now we can see the participants column and to add the participants, we will go into models and in the room model, we will add a field for the participants.
+Now to create a many to many field, we need to use the ManyToManyField() and in that all we need to do is go ahead and go to that room and we need to specify the acutal relationship that we are setting. So we are gonna add in the user but we already have a user model connected so we need to specify a related name which just means that we can't reference a user because we already have a user up in the host ( in this case, the related name is gonna be 'participants') and then I also wanna be able to submit a form withput having to check something here, so we will just do blank=True.
+
+	participants = models.ManyToManyField(User, related_name='participants', blank=True)
+
+After saving this, we need to run this migration.
+
+	python manage.py makemigrations
+	pytohn manage.py migrate
+
+Now if I go to the rooms in the admin panel, I can see the many to many fields and then use the ctrl to select the users you want to be the participants and click save.
+
+Now to get those participants, we need to go to the room view and bring in the participants. Earlier on for the many to one relationship, we used the _set.all() but this time we have the many to many relationship, so we can simply use the all() method and obviously we can filter that out and then we will throw that into the context dictionary.
+
+    participants = room.participants.all()
+
+And now we can access this inside of our room.html
+
+    <div>
+        <h3>Participants</h3>
+        <hr>
+        
+        {% for user in participants %}
+            <div>
+                <p>@{{user.username}}</p>
+            </div>
+        {% endfor %}
+
+    </div>
+
+Later on these usernames will be clickable so that a user can check out the profile of the participant.
+
+So now what if someone wants to join this conversation. For example, a user commented in the room but he is not in the participants list, so we need to add this functionality
+
+So we need to go to the views.py and actually process this. What we need to do is, once a participant is added, before redirecting we need to add the participant.
+
+      room.participants.add(request.user)
+
+And if at some place, we need to remove the participant we can use the remove() method.
+Now if a user comments on the room, he is automatically added to the participants list.
+
+Now we have to create a delete functionality so that users can delete their own messages.
+
+So into the room.html in the message section, we are gonna add a link to delete the message.
+
+      <a href="{% url 'delete-message' message.id %}">Delete</a>
+
+Until now we don't have the delete-message url but we are gonna create that but firstly we have to create a view for that.
+So for ease, we will copy paste the deleteRoom method and modify that a little bit.
+
+	@login_required(login_url = '/login')
+	def deleteMessage(request, pk):
+    		message = Message.objects.get(id=pk)
+
+    		if request.user != message.user:
+        		return HttpResponse('You are not authenticated for this')
+    
+
+    		if request.method == 'POST':
+        	      message.delete()
+        		return redirect('room')
+    		return render(request, 'base/delete.html', {'obj':message})
+
+And now we can create a url for that.
+
+      path('delete-message/<str:pk>/', views.deleteMessage, name = "delete-message")
+
+We also don't want the delete link all the time, so we will make sure that the owner can see that. So we wil wrap the link into an if-else condition.
+
+----
+
+Now after this, we are gonna create some activity feed on the home page.
+So we have to add one more column and for that firstly we need to add one more 1fr in the style tag then create create another div inside of the main div for this activity feed.
+
+Then we will go to the home view and get all the room messages and pass that into the context dictionary.
+
+    room_messages = Message.objects.all()
+
+Now we will query all these messages on the homepage using the for loop.
+NOw for the oredering, we can copy the meta class of the Room model and copy that to the Message model and also we can now remove the order_by() method from the room_messages in the room view.
+
+
+	<div>
+        <h3>Recent Activity</h3>
+        <hr>
+        {% for message in room_messages %}
+            <div>
+                <small>@{{message.user}}   {{message.created|timesince}} ago</small>
+                <small>Replied to "{{message.room}}"</small>
+
+                <p>{{message}}</p>
+            </div>
+        {% endfor %}
+      </div>
+
+Here to output the message, we have written only the message not the message.body because I do not want to print the whole message. But now it will follow the __str__ method that we have written for the Message model and output only first 50 characters.
+So now my side bar will not be clittered up.
+
+Now here also, we can add the delete functionality so that the user can also delete their messages from here. So just copy paste from where we have wirtten that earlier.
+
+Now we have the topics and the activities on the homepage. But now we want to make them their own component.
+Now we will build the functionality that if I browse a topic, I will see only the related activity.
+So we will go to the room view and change up the messages and we will change the all() with filter() using the qlookup method
+       
+       room_messages = Message.objects.filter(Q(room__topic__name__icontains = q))
+
+So we have filtered using the room name.
+
+Now let's make some reusable components. So we will create a template names activity_component.html. Here we will make sure that we use the same activity feed inside of our profile page later on.
+Let's say we go to a specific user's account, now I want to see the recent activity of that user inside of the profile page.
+So I have to write the code inside of the user's account that's why we are doing it into its own component.
+We are also gonna do it for the fields and the topics here.
+
+So we will go to home.html and cut all the code from the activity div and paste that into the component (leave the div as it is).
+
+Now inside of that div, we will simply include that component.
+
+       {% include 'base/activity_component.html' %}
+
+Similarly we have to create another component for topics also because we want that also in the profile page and same thing for the feed also but not the whole feed div because we do not want the room_count and all.
+
+The reason why we have access to all these items because we are passing this data into the context dictionary and now this component is available inside of that template. So once the template sees it, it does not notice that they are different components.
+So as long as they are used on the same page, it will work but if we decide to drag this into some other page without passing it into the context dictionary, it will not work.
+
+So now as this is done, we wanna work on the user profile.
+We will create another template for that named profile.html.
+
+Firstly we will extend the main template and then create a block for the content.
+Initially we will output the username and firstly after that let's create the view for that under the room and then create the URL.
+
+Now as we have done this, we have to update this on several different places.
+
+Firstly we will go to the feed_component and then change the span tag to the link and point to the user-profile URL and passing in the user id.
+
+Now if I go to the browser, I can see that the usernames are now converted to link.
+
+For the profile, we want 3 columns (topics, feed & recent activity)
+
+Now we are gonna create 3 divs for 3 columns inside of a main div and fill them with the components.
+
+
+	def userProfile(request, pk):
+    		user = User.objects.get(id = pk)
+    		rooms = user.room_set.all()
+    		room_messages = user.message_set.all()
+    		topics = Topic.objects.all()
+    		context = {'user':user, 'rooms':rooms, 'room_messages':room_messages, 'topics':topics}
+    		return render(request, 'base/profile.html', context)
+
+Now let's also update the links for the username inside of the activity.
+
+Now all this is done, we are gonna work on the statik files now.
+
+Aside from the HTML generated by the server, web applications generally need to serve additional files such as images, JavaScript, or CSS which are necessary to render the complete web page. In Django, we refer to these files as “static files”.
+
+Django has it's own way of configuring this.
+Until now, we are writing our CSS inside of our templates and we do not want that. So now we are gonna eventually move out all the CSS out of out templates and we are gonna create our own style sheets.
+
+So in django, we first need to create our static files, we need to let it know where to find these and then we can render these out dynamically into our templates.
+
+So there are different types of static files and they all have their own ways of doing things. So we will create a new folder inside of our root directory called as static.
+In this folder, we need to create another folder named as the styles for the CSS files and inside of that, we are gonna create a file named as the main.css.
+And we have to also create another folder inside of the static named as images to store the images.
+
+Right after creating this, we need to go to the settings.py file and let django know that we have some statik fils now.
+So jump to the statik fils section in the settings.py and then
+
+     STATIKFILES_DIRS = [
+    		BASE_DIR / 'static'
+     ]
+
+Now that's officially connected. 
+
+Let's go ahead and add some css into our css and firstlt let's change the background colour and to make this work, we will go to the main.html file and then load the static first 
+
+	{% load static %}
+
+and then in the CSS link, we will link it to the static that we have just loaded.
+
+     <link rel="stylesheet" href="{% static 'styles/main.css'%}">
+
+Now we need to specify a path for this CSS stylesheet.
+
+Now our background colour is set and and now let's try the images. 
+
+Get an image and paste that into the images folder and then to use the image inside of the tempalate, you can do something like
+
+         <img src="{% static 'images/django_architecture.png' %}">
+
+Now there are differences for user uploaded images which we will get into like when a user uploads a profile, we do have to configure the image in a different way. For this, we are gonna use something called as STATIC_ROOT in the settings, but we will use that later and we will also have to configure some URLs for that and also the static files in the production are handled a little bit differently than they are in development.
+
+Now the next part is instatlling the theme but before that we have to fix something (check for small mistakes or any changes).
+So in the create room form, at this point when we go to this, we have an option to select the host here. It was fine when we were using the basic CRUD operations but now we want this host to be automatically added based on whoever is logged in and we also don't want participants to be visible here.
+So we will go to forms.py and there in the field, we have selected all but not we don't want that. So we will use the exclude method and exclude the host and the participants from there. Now we also wanna make sure that the backend knows how to process this. So we have to update a few things in the views.
+
+In the createRoom view, we are not submitting the host. So first we have to get the room value and also commit False and now we have to set the user as the host. We have to modify it like
+
+      room = form.save(commit = False)
+      room.host = request.user
+	room.save()
+
+
+Now we can move to installing our theme. ( Our website looks very ugly right now. )
+So we are basically gonna grab some prebuild templates, add them into our code in the django way. We will them modify some data inside of the templates.
+So we will get the theme folder from the github and then we are gonna start replacing these with our templates.
+
+Firstly we will replace our home.html with the index.html and change it's name to home.html (home.html -> home_old.html, index.htm -> home.html) 
+Now in the browser, we can see that some changes but no styling till now and for that we will now add the css files.
+So for that, we will put the style.css from the theme to the styles in the static folder and then in the new home.html file, we will just load the static and then link this style.css file.
+
+Now we can see the css and with this, now our homepage started to look good.
+
+Now we need to connect this main template to our main.css file. So we are gonna take all the content from the home.html and then paste this on the top of the main.html. Now we already have the content, I will slowly move out the content and replace it. So everything from the home.html is now in the main.html.
+
+Firstly we will remove everything from the main tag. Now from the below old main template, we will take the navbar and put that into the new template underneath the header and we will also take the opening the closing block tag and now we will also take the flash message and put that here from the below template. Now we can get rid of all the old template.
+
+Now we will go to home and because we have the main theme wrapping our homepage, we now no longer need the head tag and the header. We have our theme styled inside our main.html. Now we will extend the main template in the home.html and now we will wrap this whole main tag with the block tag.
+
+Now in the browser, we can see our old navbar but we will change that now.
+
+Now from the main.html, we will take the header tag and then paste this inside of the navbar.html above the original content and then just delete it from the main.html.
+So now in the nabar.html, we have the logo and we can remove that ( we have that in the homepage. ) and now below that, we have a form which sends us to the home page as a GET method and now let's update this form inside of the theme. So at the top, we will link the a tag to the home and then there is a form also and we will firstly set the method to GET and set the action to home. For the search field (input tag), we will set the name to q.
+Now we have set all the things and now we can remove the actual form from the below.
+
+Now we can see a drop down menu on the right side but it is not working, we need some javascript for that.
+So in the static folder, we will add another folder for the javascipt and from the theme folder, we will drag the script file.
+Now in order to make that work, we need to add that into our main.html file.
+
+Now in wanna update the user. We want the currently logged in user to be shown there.
+So in the header class div in the navbar, we will just set the user to the requested user. Now we wil wrap this inside of the if statement and in the else, we will send the user to the login page.
+And we will also update the logout button in the dropdown menu section to make that work ( just link it to the logout page. )
+
+So there is an icon that we wanna add and the logo also we wanna add.
+
+Now from the assets folder from the theme folder, just drag all the items to the images folder.
+Now let's go and update that. Update the logo and the avatar.
+
+Now next, we will go to the home.html. So in here, the first thing that I wanna do is , I want to get the topics here.
+
+THIS IS SOMEHOW COMPLEX TO WRITE WHAT WE ARE CODING BUT REFER TO 4:03:00 UP TO 5:12:00 TO GET A CLEAR EXPLANATION.
+(VIDEO LINK :- https://www.youtube.com/watch?v=PtQiiknWUcI)
+
+ Here the main thing to notice is, we have all the static data in the template and we have to make them static as per old templates that we have made.
+
+------------
+
+After this theme applying process, let's just give user the ability to edit their account.
+We don't even have this page here, so firstly we have to build that.
+
+So for this, we will move the edit_user.html from theme folder to templates and then change the name to update-user.html
+
+Now we need to create a view for that and also create a url for that obviously.
+Now we will link this to the navbar. So in the dropdown-menu div, let's change the link to the update-user and then we have to style that.
+
+For this, open the update-user tempalate. Delete all the things till the header, extend the main and wrap this inside of a block.
+Next update some href's in the tempalate to make them work.
+In the profile.html, wrap the edit user section in an if condition, so that only the right user can update the room and change the url to update-user.
+
+So now if I am in my own room, I can edit that, but now the other's room.
+In the update-user.html, remove all the room values except only one and leave form_action.
+So we are gonna use a model form for these.
+
+So go to forms.html, import the User first and we will create a model form base around this User. In the model field instead of specifying all the User because the user model has a lot of fields. There are password, superuser, etc. So for now, we are just specifying the username and the email.
+
+	class UserForm(ModelForm):
+          class Meta:
+        	 model = ['username', 'email']
+
+Later on, we will add more in this.
+
+So inside of the view, we need to import this and render this in the updateUser view and the instance will be the requested user and pass this inside of the context dictionary.
+
+So now in the update-user.html, let's access this and create a for loop for that.
+Below the csrf_token, create a for loop and output every single form.
+
+So now we will only see the username and the email section in the edit user. So we want to be able to process this. So in the updateUser view, we will just create an if condition and save the form if it is valid.
+
+    @login_required(login_url = 'login')
+    def updateUser(request):
+    	 user = request.user
+    	 form = UserForm(instance = user)
+
+    	 if request.method == 'POST':
+     	     form = UserForm(request.POST, instance = user)
+           if form.is_valid():
+              form.save()
+              return redirect('user-profile', pk = user.id)
+
+     	 return render(request, 'base/update-user.html', {'form':form})
+
+So now we can edit the user profile and it will be updates when we submit.
