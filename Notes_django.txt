@@ -1160,4 +1160,252 @@ So now we will only see the username and the email section in the edit user. So 
 
      	 return render(request, 'base/update-user.html', {'form':form})
 
-So now we can edit the user profile and it will be updates when we submit.
+So now we can edit the user profile and it will be updated when we submit. 
+
+At this point, we wanna make some cleanup work here so that our website will completely be mobile responsive. We will fill the delete template form and also the login form.
+
+We will do most of this before we move to REST framework.
+
+So first thing is, when we try to submit the message in any room, it does not work. So we have to update the action in the room.html in the div with room__message class.
+
+     <div class="room__message">
+        <form action=" " method="POST">
+          {% csrf_token %}
+          <input name="body" placeholder="Write your message here..." />
+        </form>
+      </div>
+
+Now let's update the delete template (Remember that you have to be logged in to delete a specific message and the message should be yours)
+
+So we will open up our theme again and take the delete.html from there and modify that as per the requirements.
+
+Now after this, we will update the login/register page. So for this, we will replace the login page.
+
+And after some modification, we will just wrap the content for the login and for the register and change as per the requirements.
+
+After it is done, We want it to be mobile responsive.
+And here, we should know few things.
+When we see the mobile version, we can see that there are some of the item which hides. So we will make a separate button for these.
+
+
+Above the buttons, there is a search bar which does not work for now, so we will also look into that.
+
+So in the home.html, we see a class named mobile_menu and in that there is a form and below that those buttons are written.
+So firstly we have to set the form action to home and the method will be GET and then we will add q to the name in the input section.
+
+Now our search bar is responding.
+
+Now for the buttons to work, we are gonna add in a new template and we will make a view and a url for it and then we will add in some dynamic content.
+
+So we will grab the topics.html from the theme folder and firstly extend it to main and wrap it to a block.
+So now we have this tempalate (will modify this), we will create a view for this.
+Now we need a url for this.
+
+   path('topics/', views.topicsPage, name = "topics"),
+
+So now we have our url and a view which renders that page and now in the home.hmtl, we need to this mobile menu div. Then we will point the url of the browse topics button with the topics
+So that starts rendering the topics page now.
+
+On the other hand, we are now updating the more button which is below the browse topics in the full winder (desktop). So in the topics_component, we see this link tag at the bottom of the page and we will also point this to the topics
+
+SO coming back to the topics template, let's update that now. So we have to update the back link, search bar and the content.
+
+We will link the back button to home and for the topics, we will take only one remove the others and we will use a for loop.
+
+Now it is the time to update our topics view.
+
+    def topicsPage(request):
+    	topics = Topic.objects.filter()
+    	return render(request, 'base/topics.html', {'topics':topics})
+
+Now we can write the loop and render the topics.
+
+So for all topics, we are gonna send the user to the topics and the for loop for the topics will be like 
+
+    {% for topic in topics %}
+        <li>
+          <a href="{% url 'home' %}?q={{topic.name}}">{{topic.name}} <span>{{topics.room_set.all.count}}</span></a>
+        </li>
+    {% endfor %}
+
+Suppose we have a large number of topics, so we have to search for that, and for that we have to make our search bar function.
+So in the topics div in the topics.html, firstly in the input tag, we have to set the name to q and after that set the method to GET and action as blank.
+For this q to work, in the views page, scroll up to the home view and take that q and then paste that into the topicsPage view.
+So now we will update that filter method in the view to make it work otherwise it will work as all().
+
+    def topicsPage(request):
+    	q = request.GET.get('q') if request.GET.get('q') != None else ''
+   	topics = Topic.objects.filter(name__icontains=q)
+    	return render(request, 'base/topics.html', {'topics':topics})
+
+So now if a user searches, that q method will be sent to the topicsPage because we are sending it to the same url and then we should be able to filter down the topics.
+
+Now the search bar is working.
+
+So now we will limit our topics in the browse topics section to 5 topics in a page.
+So in the home view, we can see the topics variable gets all the varibles and we will update that to only 5 topics using [].
+
+   topics = Topic.objects.all()[0:5]
+
+So now we will see only 5 topics and if we click on more, we will be redirected to the browse topics page and then we can search from there.
+
+Now the work on the browse topics button is complete and now it is the time to work on recent activities button. This will also has it's own page.
+So we will drag the activity.html from the theme and do the basics as we do everytime.
+Add the activity url into the home.html
+
+Now we will create a view for this. For the activities, we have to query some data
+
+Now we remove the divs with activities__box and drag that from the activity_component.html that we have written and then pass into the context dictionary. 
+
+Now we are done with the recent activities button also
+
+------
+
+Now we will move on to the API and build a custom user model.
+
+Let's go ahead and build our API. Now there are different ways of doing it, we could create a different app inside of our django project, what we are gonna do here is, we are gonna a new folder on it's own. So in our base app folder, we are gonna create a folder named as api and in order to make it work, we need the __init__.py file. We also need the urls.py (our api will have it's own url routing system. So we will have the url specifically for this api), views.py file and then we also need serializers (serializers.py).
+
+Let's go ahead and start working with our api. Let's say we want a view in our api and we just want to respond with some json data. So firstly, we will import the jsonresponse.
+
+So we are gonna create a function based view (but with django REST framework, we can also use the class based views) named as getRoutes(). So this is gonna be the view which shows us all the routes in our API. So these urls our these routes are simply gonna be two GET methods here (we can also send PUT, POST, DELETE methods to our API).
+
+So first route will be /api/rooms and it will give a json array of objects of all the rooms in our database and we can control what kind of data will be shown. The next routes will be /api/rooms/:id, this will give you the information about a single room which is having that id.
+
+So we have a very simple API and this is what we are allowing our users to see. So we will take this list and throw this inside of the jsonresponse and then return this and we will also add another parameter which says safe=False which means that we can use more than the python dictionaries inside of this response. So this safe turns this list into a json list. So this jsonresponse is gonna convert this data into json data
+
+    def getRoute(request):
+    	routes = [
+        'GET /api',
+        'GET /api/rooms',
+        'GET /api/rooms/:id'
+    	]
+    	return JsonResponse(routes, safe=False)
+
+Next we need a url to hit this endpoint. Firstly we will import the path and the views and then we will create the url patterns.
+So the first url is going to be for the homepage
+
+   path('', views.getRoute)
+
+Now we need to connect this urls file to the main project file because django does not know about this till now.
+So we will go to the urls.py file of myproject (main project) and we are gonna create a new path for the api and then we are gonna send the user to the urls file of the api
+
+   path('api/', include('base.api.urls'))
+
+So any url which has api in it after the home url will now point to the url file of the api and now that file will take care of everything.
+Now if we request for the api from the browser, we can see the json response which anybody can make a request to and pull this data in. Now they can use any programming language and they can now use this api to fetch the data.
+
+So now that is a jsonresponse in a simple api and there is not much we can do with it. Now we can make ouir api work without the django REST framework but why do that when we have this awesome package.
+
+So let's install the django rest framework
+Firstly we have to install it using pip and then add it to the installed apps.
+
+     python -m pip install djangorestframework
+
+Next, go to settings.py add 'rest_framework' to the installed apps.
+
+Now we are good to go.
+At this point, what we will do is start building out my actual urls and make sure that they are based off of the django rest framework
+
+So let's go back to our views here. Firstly, we will remove the jsonresponse, we don't need it now. We will use what rest framework provides us.
+
+REST framework provides two wrappers you can use to write API views.
+1.    @api_view  --> decorator for working with function based views.
+2.    APIView    --> class for working with class based views.
+
+After removing the jsonresponse, we will import the Response and the api_view
+
+    from rest_framework.decorators import api_view
+    from rest_framework.response import Response
+
+Now after this the first thing is to add the decorator.
+So we will add the api_view decorator above the getRoute method and we have to pass a list in it which contains those http methods which are allowed to access this view
+
+    @api_view(['GET'])
+
+In our case, we will use GET because we only want users to access this view with a GET method only.
+But if we want to add mehtods, we can use commas for that and now those methods are also allowed to access the view.
+
+Now in the view, we are returning the jsonresponse but now we will use Response instead and we also don't need the safe now.
+
+Now if we refresh in the browser, we can see a new UI and it shows more information about the api. This actually gives us more functionality than it looks right now. For example, we can make POST and PUT request directly from this interface. So it is like a UI for our API.
+We can also change the format to json from here.
+
+It just gives us the interface but now we wil go and render out some more information and we will see why the django REST framework is so cool.
+
+At this point, we want to create another view called getRooms and we will return the rooms as a Response.
+Firstly we have to import the rooms
+
+    from base.models import Room
+
+then we will get the rooms from the Room in the view as rooms. Next we will add the decorator and we will allow only the GET request
+
+    @api_view(['GET'])
+    def getRooms(request):
+        rooms = Room.objects.all()
+        return Response(rooms)
+
+Then we will create a url for that.
+
+   path('rooms/', views.getRooms)
+
+Now at this point if we go this url in the browser, we will get an error which says 'Object of type Room is not JSON serializable'. So what is happening here is we are making a query and this is a python list of objects here and we need to make sure that we can serialize this data which means that the Response cannot return back the python objects. It was able to do it with the list that we have created in the getRoute view and we can even pass in dictionaries and that JsonResponse method was able to serialize and convert it but object cannot be converted automatically.
+
+So what we have here is we have a file for serializers that we have created. So serializers are gonna be classes that take a certain model that we want to serialize and it can turn it into json data. So basically it is gonna take the python object and turn it into the json object and then we can return that.
+
+So the serializers work a lot like a model form, we are gonna import a serializer, create a class, specify the model and the field that we want to serialize and then that will be rendered out.
+
+In the serializers.py, let's make a quick import of the ModelSerializer. It is a lot like the model form and then we will import the Room.
+
+   from rest_framework.serializers import ModelSerializer
+   from base.models import Room
+
+Then we will create a class to serialize then rooms named as RoomSerializer (just like we had the RoomForm in the model form) and this inherits from the ModelSerializer. In the meta we are gonna specify two fields at minimum. We are gonna specify the model which is the Room and then the fields that are allowed, this can also be a list but at this point, we are gonna set it to all.
+So it means take this Room model and serialize all the fields. So return all these fields and turn this into a json object.
+
+    class RoomSerializer(ModelSerializer):
+    	class Meta:
+         model = Room
+         fields = '__all__'
+
+So now that we have our serializer, we are gonna take this and import this into our api views.
+
+   from .serializers import RoomSerializer
+
+So now in the getRooms view, we are just gonna add a variable and call it serializer and in there we are just gonna use the RoomSerializer then we will pass in the object or objects that we want to serialize (we stored it in rooms variable) then the next variable will be many and set it to true. many means are there gonna be multiple objects that we want to serialize and is there only one. In our case, we are serialize the query set, so we are gonna set it to true
+
+   serializer = RoomSerializer(rooms, many=True)
+
+So our serializer variable is now an object here. So intead of passing the rooms in the Response, we will pass the serializer. But we do not want to return the object, we want to return the data, so we will use the .data attribute. We can also return the serializer only and can see all the values but if we access the data that is gonna give us the rooms in a serialized format.
+
+Now if we save and refresh, we will not see the error. We can see an array of rooms and that data is now serialized.
+
+So let's say in our application, we do not want to allow the users to just access the room, we want to give them an endpoint to may be open up a room in their website and view the details about it.
+
+So what we can do is, we can copy paste the getRooms view and change this a little bit. We are gonna change the name to getRoom and some other change changes also.
+
+   @api_view(['GET'])
+   def getRoom(request, pk):
+      room = Room.objects.get(id=pk)
+      serializer = RoomSerializer(room, many=False)
+      return Response(serializer.data)
+
+and then we will also set the url
+
+   path('rooms/<str:pk>/', views.getRoom),
+
+we set the url using rooms not the room because in the getRoute view, we set the route for a particular room like that only.
+
+Now if we go to this url, we can get a particular room using the id.
+We can also nest the serializer so that we can have children in these (but we are not doing it now).
+
+Now that is it for the simple API.
+
+
+-----
+
+Now let's go ahead and work on building a custom user model.
+So a user model is built in into django and this is something that contains how a user gets authenticated and it contains very important information about the user. Now there is multiple ways of adding to it. For example, in a user model, we don't have a bio,  we don't have a profile picture, we don't have this information in that user model. Now one thing we could do is add a one to one relationship and we would simply create a profile model. So the profile model would contain all the information like the user's fb account, social links, bios, profile pictures and so on and we created this one to one relationship and this one to one relationship would simply connect to the user model and that means that a user can have only one profile and a profile can only have one user. So we would connect those and we would add in things like the profile picture and all that information to the profile model. So this way, we never have to actually touch the user model.
+
+So what we are doing now is, we are gonna modify the user model. It does require some more configuration but it is safer because the user model is not being touched.
+Now in here we are actually overriding the user model and then we are gonna customize it.
+In this process we have to actually clear our database because now once we start messing with the user model, it will change things up and you will see why and we will re-add in the data once that is migrated
